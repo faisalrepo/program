@@ -1,0 +1,88 @@
+
+	// -----------------------------/ Money Transfer by admin/---------------
+
+	public Createaccount moneytransfer(double fromaccount, double toaccount, double transfer, String password) {
+		Createaccount e = null;
+		try {
+			Connection con = DriverManager.getConnection("jdbc:mysql://localhost/abcd", "root", "nclc123456");
+			PreparedStatement ps = con.prepareStatement("select * from createaccount where a_number=?");
+			PreparedStatement ps1 = con.prepareStatement("select * from createaccount where a_number=? and password=?");
+
+			ps.setDouble(1, toaccount);
+
+			ps1.setDouble(1, fromaccount);
+			ps1.setString(2, password);
+
+			ResultSet rs = ps.executeQuery();
+			ResultSet rs1 = ps1.executeQuery();
+
+			double prebalance = 0;
+			double newbalance = 0;
+
+			double primarybalance = 0;
+			double nextbalance = 0;
+
+			String accType = "";
+
+			final double securityamount = 500;
+
+			while (rs.next()) {
+				prebalance = rs.getDouble(13);
+				accType = rs.getString(4);
+				newbalance = prebalance + transfer;
+
+				e = new Createaccount(rs.getDouble(1), rs.getString(2), rs.getDouble(3), rs.getString(4),
+						rs.getString(5), rs.getString(6), rs.getString(7), rs.getString(8), rs.getString(9),
+						rs.getString(10), rs.getString(11), rs.getString(12), newbalance);
+			}
+
+			while (rs1.next()) {
+				primarybalance = rs1.getDouble(13);
+				nextbalance = primarybalance - transfer;
+
+				e = new Createaccount(rs1.getDouble(1), rs1.getString(2), rs1.getDouble(3), rs1.getString(4),
+						rs1.getString(5), rs1.getString(6), rs1.getString(7), rs1.getString(8), rs1.getString(9),
+						rs1.getString(10), rs1.getString(11), rs1.getString(12), primarybalance);
+			}
+
+			if (transfer <= (primarybalance - securityamount)) {
+
+				// -------- to account ------------
+
+				PreparedStatement ps2 = con.prepareStatement("update createaccount set balance=? where a_number=?");
+				ps2.setDouble(1, newbalance);
+				ps2.setDouble(2, toaccount);
+				ps2.executeUpdate();
+
+				// ------------- from account --------
+
+				PreparedStatement ps3 = con
+						.prepareStatement("update createaccount set balance=? where a_number=? and password=?");
+				ps3.setDouble(1, nextbalance);
+				ps3.setDouble(2, fromaccount);
+				ps3.setString(3, password);
+
+				ps3.executeUpdate();
+
+				PreparedStatement ps4 = con.prepareStatement(
+						"insert into transaction(ttype,a_number, a_type,prebalance,tamount,curbalance,date)  values(?,?,?,?,?,?,NOW())");
+				ps4.setString(1, "Transfer");
+				ps4.setDouble(2, toaccount);
+				ps4.setString(3, accType);
+				ps4.setDouble(4, prebalance);
+				ps4.setDouble(5, transfer);
+				ps4.setDouble(6, newbalance);
+
+				ps4.executeUpdate();
+
+			} else {
+				e.setMsg("you have no sufficient balance");
+
+			}
+
+		} catch (Exception ex) {
+			// TODO: handle exception
+		}
+
+		return e;
+	}+
